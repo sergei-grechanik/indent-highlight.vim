@@ -34,6 +34,7 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
   let pattern = ""
   " When we use virtcol("."), this will be adjusted
   let indentLength = indent(".")
+  let headerIndent = -1
 
   while 1
     if !s:IsLineOfSameIndent(startLineNumber, currentLineIndent)
@@ -41,6 +42,7 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
       if startLineNumber != currentLineNumber && a:echoHeaderLine
         echo getline(startLineNumber)
       endif
+      let headerIndent = indent(startLineNumber)
       break
     endif
     " TODO: This magic const should be a variable
@@ -71,8 +73,16 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
   let b:PreviousBlockStartLine = startLineNumber
   let b:PreviousBlockEndLine = endNonEmptyLineNumber
   let b:PreviousIndent = indentLength
-  " Highlight just the indentation spaces and a bit of empty lines
-  return '\%>' . startLineNumber . 'l\%<' . endNonEmptyLineNumber . 'l^\(' . repeat('\s', indentLength) . '\)\?'
+  if headerIndent < 0
+    let headerIndent = indentLength - shiftwidth()
+  endif
+  if headerIndent < 0
+    let headerIndent = 0
+  endif
+  let linePat = '\%>' . startLineNumber . 'l\%<' . endNonEmptyLineNumber . 'l'
+  let colPat = '\%<' . (indentLength + 1) . 'v\%>' . headerIndent . 'v'
+  return linePat . colPat
+  "return '\%>' . startLineNumber . 'l\%<' . endNonEmptyLineNumber . 'l^\(' . repeat('\s', indentLength) . '\)\?'
 endfunction
 
 function! s:IsLineOfSameIndent(lineNumber, referenceIndent)
@@ -134,9 +144,9 @@ function! RefreshIndentHighlightOnCursorMove()
     endif
     " Don't rehighlight too often
     " TODO: This magic const should be a variable
-    if exists("b:PreviousIndentHighlightingTime") && reltimefloat(reltime(b:PreviousIndentHighlightingTime)) < 0.2
+    if exists("b:PreviousIndentHighlightingTime") && reltimefloat(reltime(b:PreviousIndentHighlightingTime)) < 0.5
       " Prevent constant rehighlighting when scrolling
-      let b:PreviousIndentHighlightingTime = reltime()
+      " let b:PreviousIndentHighlightingTime = reltime()
       " Rehighlight later
       let b:NeedsIndentRehighlightingOnTimeout = 1
       return
