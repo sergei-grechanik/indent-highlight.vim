@@ -147,7 +147,12 @@ endfunction
 
 function! RefreshIndentHighlightOnCursorHold()
   if exists("b:NeedsIndentRehighlightingOnTimeout") && b:NeedsIndentRehighlightingOnTimeout
-    call s:DoHighlight(1)
+    " If the line is empty, don't rehighlight, but change the PreviousLine
+    if empty(getline('.'))
+      let b:PreviousLine = line('.')
+      return
+    endif
+    call s:DoHighlight()
   endif
 endfunction
 
