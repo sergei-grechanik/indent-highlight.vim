@@ -70,6 +70,7 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
 
   let b:PreviousBlockStartLine = startLineNumber
   let b:PreviousBlockEndLine = endNonEmptyLineNumber
+  let b:PreviousIndent = indentLength
   " Highlight just the indentation spaces and a bit of empty lines
   return '\%>' . startLineNumber . 'l\%<' . endNonEmptyLineNumber . 'l^\(' . repeat('\s', indentLength) . '\)\?'
 endfunction
@@ -108,7 +109,7 @@ function! RefreshIndentHighlightOnCursorMove()
     endif
     " This is an exception to the whole subsequent logic: if we move inside the indentation columns,
     " perform highlighting
-    if line('.') == b:PreviousLine && virtcol('.') < b:PreviousIndent
+    if line('.') == b:PreviousLine && (virtcol('.') < b:PreviousIndent || b:PreviousIndent < indent('.'))
       call s:DoHighlight(echoHeaderLine)
       return
     endif
@@ -178,7 +179,7 @@ function! s:DoHighlight(...)
   " Highlight the new pattern
   let w:currentMatch = matchadd("IndentHighlightGroup", pattern)
   let b:PreviousLine = line('.')
-  let b:PreviousIndent = indent('.')
+  " let b:PreviousIndent = indent('.')
   let b:PreviousIndentHighlightingTime = reltime()
   let b:NeedsIndentRehighlightingOnTimeout = 0
 endfunction
