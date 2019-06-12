@@ -164,7 +164,7 @@ function! s:DoHighlight(...)
   let echoHeaderLine = get(a:, 0, 0)
 
   " Do nothing if indent_highlight_disabled is set globally or for window
-  if get(g:, 'indent_highlight_disabled', 0) || get(w:, 'indent_highlight_disabled', s:getStartDisabled())
+  if get(g:, 'indent_highlight_disabled', 0) || get(b:, 'indent_highlight_disabled', s:getStartDisabled())
     return
   endif
 
@@ -194,16 +194,16 @@ function! s:IndentHighlightHide()
     call matchdelete(w:currentMatch)
     let w:currentMatch = 0
   endif
-  let w:indent_highlight_disabled = 1
+  let b:indent_highlight_disabled = 1
 endfunction
 
 function! s:IndentHighlightShow()
-  let w:indent_highlight_disabled = 0
+  let b:indent_highlight_disabled = 0
   call s:DoHighlight()
 endfunction
 
 function! s:IndentHighlightToggle()
-  if get(w:, 'indent_highlight_disabled', s:getStartDisabled())
+  if get(b:, 'indent_highlight_disabled', s:getStartDisabled())
     call s:IndentHighlightShow()
   else
     call s:IndentHighlightHide()
