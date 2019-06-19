@@ -21,32 +21,11 @@ function! s:getStartDisabled()
   return get(g:, 'indent_highlight_start_disabled', 1)
 endfunction
 
-function! s:CurrentBlockIndentPattern(echoHeaderLine)
-  let currentLineIndent = indent(".")
-  " If the cursor is on the indentation space symbol, use its position to highlight indent
-  if virtcol(".") < currentLineIndent
-    let currentLineIndent = virtcol(".")
-  endif
-  let currentLineNumber = line(".")
-  let startLineNumber = currentLineNumber
-  let endNonEmptyLineNumber = currentLineNumber
-  let endLineNumber = currentLineNumber
-  let pattern = ""
-  " When we use virtcol("."), this will be adjusted
-  let indentLength = indent(".")
-  let headerIndent = -1
-
-  while 1
-    if !s:IsLineOfSameIndent(startLineNumber, currentLineIndent)
-      " Print the header line
-      if startLineNumber != currentLineNumber && a:echoHeaderLine
-        echo getline(startLineNumber)
-      endif
-      let headerIndent = indent(startLineNumber)
-      break
-    endif
-    " TODO: This magic const should be a variable
-    if startLineNumber < line("w0") - 100
+function! s:FindBlockStart(currentLine, currentIndent, limit)
+  let startLineNumber = a:currentLine
+  let indentLength = indent(a:currentLine)
+  while s:IsLineOfSameIndent(startLineNumber, a:currentIndent)
+    if a:limit >= 0 && startLineNumber < a:currentLine - a:limit
       break
     endif
     if !empty(getline(startLineNumber)) && indent(startLineNumber) < indentLength
@@ -54,10 +33,16 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
     endif
     let startLineNumber -= 1
   endwhile
+  return [startLineNumber, indentLength]
+endfunction
 
-  while s:IsLineOfSameIndent(endLineNumber, currentLineIndent)
+function! s:FindBlockEnd(currentLine, currentIndent, limit)
+  let endLineNumber = a:currentLine
+  let endNonEmptyLineNumber = endLineNumber
+  let indentLength = indent(a:currentLine)
+  while s:IsLineOfSameIndent(endLineNumber, a:currentIndent)
     " TODO: This magic const should be a variable
-    if endLineNumber > line("w$") + 20
+    if endLineNumber > a:currentLine + a:limit
       break
     endif
     if !empty(getline(endLineNumber))
@@ -69,6 +54,38 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
     endif
     let endLineNumber += 1
   endwhile
+  return [endNonEmptyLineNumber, indentLength]
+endfunction
+
+function! s:CurrentBlockIndentPattern(echoHeaderLine)
+  let currentLineIndent = indent(".")
+  " If the cursor is on the indentation space symbol, use its position to highlight indent
+  if virtcol(".") <= currentLineIndent
+    let currentLineIndent = virtcol(".")
+  else
+    " TODO: This should be a parameter, however I don't want constant highlighting
+    return ""
+  endif
+  let currentLineNumber = line(".")
+  let endNonEmptyLineNumber = currentLineNumber
+  let endLineNumber = currentLineNumber
+  let pattern = ""
+
+  " TODO: This magic const should be a variable
+  let blockStart = s:FindBlockStart(currentLineNumber, currentLineIndent, 200)
+  let startLineNumber = blockStart[0]
+  let indentLength = blockStart[1]
+  " Print the header line
+  if startLineNumber != currentLineNumber && a:echoHeaderLine
+    echo getline(startLineNumber)
+  endif
+  let headerIndent = indent(startLineNumber)
+
+  let blockEnd = s:FindBlockEnd(currentLineNumber, currentLineIndent, 100)
+  let endNonEmptyLineNumber = blockEnd[0]
+  if blockEnd[1] < indentLength
+    let indentLength = blockEnd[1]
+  end
 
   let b:PreviousBlockStartLine = startLineNumber
   let b:PreviousBlockEndLine = endNonEmptyLineNumber
@@ -119,13 +136,15 @@ function! RefreshIndentHighlightOnCursorMove()
     endif
     " This is an exception to the whole subsequent logic: if we move inside the indentation columns,
     " perform highlighting
-    if line('.') == b:PreviousLine && (virtcol('.') < b:PreviousIndent || b:PreviousIndent < indent('.'))
+    if line('.') == b:PreviousLine && (virtcol('.') <= b:PreviousIndent || b:PreviousIndent < indent('.'))
       call s:DoHighlight(echoHeaderLine)
       return
     endif
     " Do nothing if cursor has not moved to a new line unless the indent has changed or
     " the cursor is on the indentation space symbol or rehighlighting is needed
     if line('.') == b:PreviousLine && indent('.') == b:PreviousIndent && virtcol('.') >= b:PreviousIndent && !b:NeedsIndentRehighlightingOnTimeout
+      " TODO: need parameter: also don't do nothing, but stop highlighting
+      call s:StopHighlight()
       return
     endif
     " If we are out of the previous block, stop highlighting it
@@ -173,30 +192,43 @@ endfunction
 function! s:DoHighlight(...)
   let echoHeaderLine = get(a:, 0, 0)
 
-  " Do nothing if indent_highlight_disabled is set globally or for window
+  " Do nothing if indent_highlight_disabled is set globally or for buffer
   if get(g:, 'indent_highlight_disabled', 0) || get(b:, 'indent_highlight_disabled', s:getStartDisabled())
+    call s:StopHighlight()
     return
   endif
 
   " Get the current block's pattern
   let pattern = s:CurrentBlockIndentPattern(echoHeaderLine)
+
+  if exists("w:currentPattern") && pattern ==# w:currentPattern
+    " It is the same pattern that is being highlighted
+    return
+  endif
+
+  " Clear previous highlight if it exists
+  call s:StopHighlight()
+
   if empty(pattern)
     "Do nothing if no block pattern is recognized
     return
   endif
 
-  " Clear previous highlight if it exists
-  if get(w:, 'currentMatch', 0)
-    call matchdelete(w:currentMatch)
-    let w:currentMatch = 0
-  endif
-
   " Highlight the new pattern
   let w:currentMatch = matchadd("IndentHighlightGroup", pattern)
+  let w:currentPattern = pattern
   let b:PreviousLine = line('.')
   " let b:PreviousIndent = indent('.')
   let b:PreviousIndentHighlightingTime = reltime()
   let b:NeedsIndentRehighlightingOnTimeout = 0
+endfunction
+
+function! s:StopHighlight()
+  if get(w:, 'currentMatch', 0)
+    call matchdelete(w:currentMatch)
+    let w:currentMatch = 0
+    let w:currentPattern = ""
+  endif
 endfunction
 
 function! s:IndentHighlightHide()
