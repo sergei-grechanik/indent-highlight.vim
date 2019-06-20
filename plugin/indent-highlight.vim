@@ -54,7 +54,26 @@ function! s:FindBlockEnd(currentLine, currentIndent, limit)
     endif
     let endLineNumber += 1
   endwhile
-  return [endNonEmptyLineNumber, indentLength]
+  return [endNonEmptyLineNumber, indentLength, endLineNumber]
+endfunction
+
+function! s:JumpBlockStart()
+  let currentLine = line(".")
+  let currentLineIndent = indent(".")
+  if virtcol(".") <= currentLineIndent
+    let currentLineIndent = virtcol(".")
+  end
+  let blockStart = s:FindBlockStart(currentLine, currentLineIndent, 10000)
+  silent execute "normal! " . blockStart[0] . "G"
+endfunction
+
+function! s:JumpBlockEnd()
+  let currentLineIndent = indent(".")
+  if virtcol(".") <= currentLineIndent
+    let currentLineIndent = virtcol(".")
+  end
+  let blockStart = s:FindBlockEnd(line("."), currentLineIndent, 10000)
+  silent execute "normal! " . blockStart[2] . "G"
 endfunction
 
 function! s:CurrentBlockIndentPattern(echoHeaderLine)
@@ -228,6 +247,8 @@ function! s:StopHighlight()
     call matchdelete(w:currentMatch)
     let w:currentMatch = 0
     let w:currentPattern = ""
+    let b:PreviousLine = -1
+    let b:PreviousIndent = -1
   endif
 endfunction
 
@@ -273,4 +294,12 @@ map <unique> <silent> <Leader>ih :IndentHighlightToggle<CR>
 " This is the only command available to the users.
 if !exists(":IndentHighlightToggle")
   command IndentHighlightToggle  :call s:IndentHighlightToggle()
+endif
+
+if !exists(":JumpBlockStart")
+  command JumpBlockStart :call s:JumpBlockStart()
+endif
+
+if !exists(":JumpBlockEnd")
+  command JumpBlockEnd :call s:JumpBlockEnd()
 endif
