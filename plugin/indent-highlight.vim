@@ -197,7 +197,9 @@ function! RefreshIndentHighlightOnCursorHold()
   if exists("b:NeedsIndentRehighlightingOnTimeout") && b:NeedsIndentRehighlightingOnTimeout
     " If the line is empty, don't rehighlight, but change the PreviousLine
     if empty(getline('.'))
-      let b:PreviousLine = line('.')
+      if exists("b:PreviousLine")
+        let b:PreviousLine = line('.')
+      endif
       return
     endif
     call s:DoHighlight()
@@ -247,8 +249,10 @@ function! s:StopHighlight()
     call matchdelete(w:currentMatch)
     let w:currentMatch = 0
     let w:currentPattern = ""
-    let b:PreviousLine = -1
-    let b:PreviousIndent = -1
+    if exists("b:PreviousLine")
+      let b:PreviousLine = -1
+      let b:PreviousIndent = -1
+    endif
   endif
 endfunction
 
