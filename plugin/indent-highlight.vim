@@ -81,6 +81,8 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
   " If the cursor is on the indentation space symbol, use its position to highlight indent
   if virtcol(".") <= currentLineIndent
     let currentLineIndent = virtcol(".")
+  elseif getline(".") !~ '\S'
+    let currentLineIndent = indent(".")
   else
     " TODO: This should be a parameter, however I don't want constant highlighting
     return ""
@@ -161,7 +163,7 @@ function! RefreshIndentHighlightOnCursorMove()
     endif
     " Do nothing if cursor has not moved to a new line unless the indent has changed or
     " the cursor is on the indentation space symbol or rehighlighting is needed
-    if line('.') == b:PreviousLine && indent('.') == b:PreviousIndent && virtcol('.') >= b:PreviousIndent && !b:NeedsIndentRehighlightingOnTimeout
+    if line('.') == b:PreviousLine && indent('.') == b:PreviousIndent && virtcol('.') > b:PreviousIndent && !b:NeedsIndentRehighlightingOnTimeout
       " TODO: need parameter: also don't do nothing, but stop highlighting
       call s:StopHighlight()
       return
