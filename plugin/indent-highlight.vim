@@ -237,8 +237,8 @@ function! s:DoHighlight(...)
     return
   endif
 
-  " Highlight the new pattern
-  let w:currentMatch = matchadd("IndentHighlightGroup", pattern)
+  " Highlight the new pattern, note that we use low priority
+  let w:currentMatch = matchadd("IndentHighlightGroup", pattern, -1)
   let w:currentPattern = pattern
   let b:PreviousLine = line('.')
   " let b:PreviousIndent = indent('.')
