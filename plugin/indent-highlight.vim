@@ -98,7 +98,7 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
   let indentLength = blockStart[1]
   " Print the header line
   if startLineNumber != currentLineNumber && a:echoHeaderLine
-    echo getline(startLineNumber)
+    echo strcharpart(getline(startLineNumber), 0, winwidth(0) - 1)
   endif
   let headerIndent = indent(startLineNumber)
 
