@@ -10,6 +10,10 @@ if !exists("g:indent_highlight_bg_color")
   let g:indent_highlight_bg_color = 255
 endif
 
+if !exists("g:indent_highlight_emptylike_patterns")
+  let g:indent_highlight_emptylike_patterns = {'cpp': '^#.*$\|^\s*\({\|[a-zA-Z0-9_]\+:\)\s*$'}
+endif
+
 function! s:InitHighlightGroup()
   " exe 'hi IndentHighlightGroup guibg=' . g:indent_highlight_bg_color . ' ctermbg=' . g:indent_highlight_bg_color
   exe 'hi IndentHighlightGroup ctermbg=' . g:indent_highlight_bg_color
@@ -21,6 +25,21 @@ function! s:getStartDisabled()
   return get(g:, 'indent_highlight_start_disabled', 1)
 endfunction
 
+function! s:IsEmptyLike(string)
+  if empty(a:string)
+    return 1
+  endif
+  if exists("b:indent_highlight_emptylike_pattern")
+    let pattern = b:indent_highlight_emptylike_pattern
+  else
+    let pattern = get(g:indent_highlight_emptylike_patterns, &filetype, '')
+  endif
+  if !empty(pattern)
+    return a:string =~# pattern
+  endif
+  return 0
+endfunction
+
 function! s:FindBlockStart(currentLine, currentIndent, limit)
   let startLineNumber = a:currentLine
   let indentLength = indent(a:currentLine)
@@ -28,7 +47,7 @@ function! s:FindBlockStart(currentLine, currentIndent, limit)
     if a:limit >= 0 && startLineNumber < a:currentLine - a:limit
       break
     endif
-    if !empty(getline(startLineNumber)) && indent(startLineNumber) < indentLength
+    if indent(startLineNumber) < indentLength && !s:IsEmptyLike(getline(startLineNumber))
       let indentLength = indent(startLineNumber)
     endif
     let startLineNumber -= 1
@@ -45,7 +64,7 @@ function! s:FindBlockEnd(currentLine, currentIndent, limit)
     if endLineNumber > a:currentLine + a:limit
       break
     endif
-    if !empty(getline(endLineNumber))
+    if !s:IsEmptyLike(getline(endLineNumber))
       if indent(endLineNumber) < indentLength
         let indentLength = indent(endLineNumber)
       endif
@@ -90,10 +109,9 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
   let currentLineNumber = line(".")
   let endNonEmptyLineNumber = currentLineNumber
   let endLineNumber = currentLineNumber
-  let pattern = ""
 
   " TODO: This magic const should be a variable
-  let blockStart = s:FindBlockStart(currentLineNumber, currentLineIndent, 200)
+  let blockStart = s:FindBlockStart(currentLineNumber, currentLineIndent, 500)
   let startLineNumber = blockStart[0]
   let indentLength = blockStart[1]
   " Print the header line
@@ -102,7 +120,7 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
   endif
   let headerIndent = indent(startLineNumber)
 
-  let blockEnd = s:FindBlockEnd(currentLineNumber, currentLineIndent, 100)
+  let blockEnd = s:FindBlockEnd(currentLineNumber, currentLineIndent, 300)
   let endNonEmptyLineNumber = blockEnd[0]
   if blockEnd[1] < indentLength
     let indentLength = blockEnd[1]
@@ -136,13 +154,13 @@ function! s:IsLineOfSameIndent(lineNumber, referenceIndent)
     return 0
   endif
 
-  " Treat empty lines as current block
-  if empty(getline(a:lineNumber))
+  " Treat lines with greater indent as current block
+  if lineIndent >= a:referenceIndent
     return 1
   endif
 
-  " Treat lines with greater indent as current block
-  if lineIndent >= a:referenceIndent
+  " Treat empty and empty-like lines as current block
+  if s:IsEmptyLike(getline(a:lineNumber))
     return 1
   endif
 
