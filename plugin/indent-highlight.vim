@@ -6,18 +6,15 @@ if exists("g:do_not_load_indent_highlight")
 endif
 let g:do_not_load_indent_highlight = 1
 
-if !exists("g:indent_highlight_bg_color")
-  let g:indent_highlight_bg_color = 255
-endif
-
 if !exists("g:indent_highlight_emptylike_patterns")
   let g:indent_highlight_emptylike_patterns = {'cpp': '^#.*$\|^\s*\({\|[a-zA-Z0-9_]\+:\)\s*$'}
 endif
 
 function! s:InitHighlightGroup()
-  " exe 'hi IndentHighlightGroup guibg=' . g:indent_highlight_bg_color . ' ctermbg=' . g:indent_highlight_bg_color
-  exe 'hi IndentHighlightGroup ctermbg=' . g:indent_highlight_bg_color
+  hi default IndentHighlightGroup ctermbg=8
 endfunction
+
+autocmd ColorScheme,VimEnter * call s:InitHighlightGroup()
 
 function! s:getStartDisabled()
   " Configuration to disable indent highlight when a buffer is opened.
@@ -297,8 +294,6 @@ function! s:IndentHighlightToggle()
     call s:IndentHighlightHide()
   endif
 endfunction
-
-call s:InitHighlightGroup()
 
 augroup indent_highlight
   autocmd!
