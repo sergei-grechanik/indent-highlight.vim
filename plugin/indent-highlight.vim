@@ -114,7 +114,7 @@ function! s:CurrentBlockIndentPattern(echoHeaderLine)
   " Print the header line
   if startLineNumber != currentLineNumber && a:echoHeaderLine
     redraw
-    echo strcharpart(getline(startLineNumber), 0, winwidth(0) - 1)
+    echo strcharpart(getline(startLineNumber), 0, winwidth(0) / 2)
   endif
   let headerIndent = indent(startLineNumber)
 
